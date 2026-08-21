@@ -22,6 +22,7 @@ class Transctions(models.Model):
     category = models.ForeignKey(Category)
     description = models.CharField(max_length=250)
     transaction_date = models.DateField()
+    budget = models.ForeignKey(Budget)
     FREQUENCY_CHOICES = [
         ('Weekly', 'Weekly'),
         ('Monthly', 'Monthly'),

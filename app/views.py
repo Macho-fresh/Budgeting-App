@@ -36,3 +36,5 @@ class CreateBudget(APIView):
         }, status = status.HTTP_201_CREATED)    
 
 # when a user sends in  transaction and its recurring, celery dedducts the money automtically every month]\
+class CreateTransactions(APIView):
+    def post(self, request):
