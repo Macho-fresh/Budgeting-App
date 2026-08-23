@@ -67,7 +67,7 @@ class CreateTransactions(APIView):
         budget.remaining_money = remaining_money
         budget.save()
 
-        # if theres a frequency, use celery to deduct utomticy every (week, month or year)
-
+        # if theres a frequency, use celery to deduct automatically every (week, month or year)
+        # i'll use redis beat
         # if frequency:
         
