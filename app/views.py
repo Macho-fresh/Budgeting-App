@@ -6,13 +6,15 @@ from rest_framework import status
 from accounts.models import User
 from django_celery_beat.models import PeriodicTask, IntervalSchedule
 from django.db import transaction
+from rest_framework.permissions import IsAuthenticated
 
 class CreateCategory(APIView):
+    permission_classes = [IsAuthenticated]
     def post(self, request):
         category = request.data.get('category')
 
         Category.objects.create(
-            category = category
+            category_name = category
         )
 
         return Response({
@@ -20,6 +22,7 @@ class CreateCategory(APIView):
         }, status = status.HTTP_201_CREATED)
 
 class CreateBudget(APIView):
+    permission_classes = [IsAuthenticated]
     def post(self, request):
         name = request.data.get('name')
         amount = request.data.get('amount')
@@ -58,6 +61,7 @@ class CreateBudget(APIView):
 
 # when a user sends in  transaction and its recurring, celery dedducts the money automtically every month]\
 class CreateTransactions(APIView):
+    permission_classes = [IsAuthenticated]
     def post(self, request):
         type = request.dat.get('type')
         amount = request.data.get('amount')
@@ -125,4 +129,11 @@ class CreateTransactions(APIView):
                 # if the month is in the current year and when its subtracted from the created_at month its == 30 then we delete 
                 # if its not in the current year well check every 30 days if timezone.now() year is equall to the year, if it is well run the above condition
 
-# class DeleteTransaction(APIView):
+class DeleteCategory(APIView):
+    def delete(self, request, id):
+        category = Category.objects.get(id = id)
+        category.delete()
+
+        return Response({
+            'message': 'Categoryy deleted'
+        }, status = status.HTTP_200_OK)

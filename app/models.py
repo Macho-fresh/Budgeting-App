@@ -3,7 +3,7 @@ from accounts.models import User
 # create db for budget and tranactions
 
 class Category(models.Model):
-    category = models.CharField(max_length=100, unique=True)
+    category_name = models.CharField(max_length=100, unique=True)
 
 class Budget(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -20,10 +20,10 @@ class Transactions(models.Model):
     ]
     type = models.CharField(choices=TYPE_CHOICES, max_length=20)
     amount = models.IntegerField()
-    category = models.ForeignKey(Category)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
     description = models.CharField(max_length=250)
     transaction_date = models.DateField()
-    budget = models.ForeignKey(Budget)
+    budget = models.ForeignKey(Budget, on_delete=models.CASCADE)
     FREQUENCY_CHOICES = [
         ('weekly', 'weekly'),
         ('monthly', 'monthly'),
