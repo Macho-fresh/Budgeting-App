@@ -4,6 +4,8 @@ from .models import *
 from rest_framework.response import Response
 from rest_framework import status
 from accounts.models import User
+from django_celery_beat.models import PeriodicTask, IntervalSchedule
+from django.db import transaction
 
 class CreateCategory(APIView):
     def post(self, request):
@@ -49,25 +51,60 @@ class CreateTransactions(APIView):
         next_occurence = request.data.get('next_occurence')
 
         owner = User.objects.get(request.user)
+        with transaction.atomic():
+            transaction = Transactions.objects.create(
+                owner = owner,
+                type = type,
+                amount = amount,
+                category = category,
+                description = description,
+                transaction_date = transaction_date,
+                budget = budget,
+                frequency = frequency,
+                next_occurence = next_occurence
+            )
 
-        transaction = Transactions.objects.create(
-            owner = owner,
-            type = type,
-            amount = amount,
-            category = category,
-            description = description,
-            transaction_date = transaction_date,
-            budget = budget,
-            frequency = frequency,
-            next_occurence = next_occurence
-        )
-
-        budget = transaction.budget.amount
-        remaining_money =  budget - amount
-        budget.remaining_money = remaining_money
-        budget.save()
+            if transaction.type == 'expenses':
+                budget = transaction.budget.amount
+                remaining_money =  budget - amount
+                budget.remaining_money = remaining_money
+                budget.save()
+            
+            if transaction.type == 'income':
+                budget = transaction.budget.amount
+                budget.remaining_money += transaction.amount
+                budget.save()
 
         # if theres a frequency, use celery to deduct automatically every (week, month or year)
         # i'll use redis beat
+        # if type of transaction is income dont forget to add
+        # add acid transactions
         # if frequency:
-        
+        # also delete budget after the month_year has passsed
+
+        if frequency:
+
+            frequency_int = 0
+            if frequency == 'weekly':
+                frequency_int = 7
+            elif frequency == 'monthly':
+                frequency_int = 30
+            elif frequency == yearly:
+                frequency_int = 365
+
+            def sheduletask():
+                interval, _ = IntervalSchedule.objects.get_or_create(
+                    every=frequency_int,
+                    period=IntervalSchedule.SECONDS
+                )
+
+                PeriodicTask.objects.create(
+                    interval = interval,
+                    name = "my_schedule",
+                    task= f"app.tasks.{frequency}_task"
+                )
+
+                # if the month is in the current year and when its subtracted from the cerated_at month its == 30 then we delete 
+                # if its not in the current year well check every 30 days if timezone.now() year is equall to the year, if it is well run the above condition
+
+# class DeleteTransaction(APIView):
