@@ -26,6 +26,12 @@ class CreateBudget(APIView):
         month_year = request.data.get('month_year')
 
         owner = User.objects.get(id=request.user)
+        
+        budget = Budget.objects.get(owner = owner) 
+        if budget:
+            return Response({
+                'message': 'A budget for this user already exists'
+            }, status = status.HTTP_409_CONFLICT)
 
         Budget.objects.create(
             owner = owner,
@@ -33,6 +39,18 @@ class CreateBudget(APIView):
             mount = amount,
             month_year = month_year 
         )
+
+        def sheduletask():
+                interval, _ = IntervalSchedule.objects.get_or_create(
+                    every=1,
+                    period=IntervalSchedule.MINUTES
+                )
+
+                PeriodicTask.objects.create(
+                    interval = interval,
+                    name = "delete_budget",
+                    task= f"app.tasks.delete_budget"
+                )
 
         return Response({
             'message': 'Budget created successfully'
@@ -100,11 +118,11 @@ class CreateTransactions(APIView):
 
                 PeriodicTask.objects.create(
                     interval = interval,
-                    name = "my_schedule",
+                    name = "check_recurring_transactions",
                     task= f"app.tasks.{frequency}_task"
                 )
 
-                # if the month is in the current year and when its subtracted from the cerated_at month its == 30 then we delete 
+                # if the month is in the current year and when its subtracted from the created_at month its == 30 then we delete 
                 # if its not in the current year well check every 30 days if timezone.now() year is equall to the year, if it is well run the above condition
 
 # class DeleteTransaction(APIView):

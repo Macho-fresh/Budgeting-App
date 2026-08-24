@@ -2,6 +2,7 @@ from celery import shared_task
 from .models import *
 from django.db import transaction
 from django.utils import timezone
+from datetime import timedelta
 
 @shared_task
 def weekly_task():
@@ -38,5 +39,12 @@ def yearly_task():
         remaining_money.save()
         print('money deducted!')
 
-# @shared_task
-# def delete_budget():
+@shared_task
+def delete_budget():
+    now = timezone.now()
+    budget = Budget.objects.all()
+    budget_timespan = budget.month_year
+    days_difference = (now - budget_timespan).days
+
+    if now == budget_timespan and days_difference == 30:
+        Budget.delete()

@@ -11,7 +11,6 @@ class Budget(models.Model):
     amount = models.IntegerField()
     remaining_money = models.IntegerField()
     month_year = models.DateField(unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
 
 class Transactions(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
