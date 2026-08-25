@@ -48,3 +48,5 @@ def delete_budget():
 
     if now == budget_timespan and days_difference == 30:
         Budget.delete()
+
+    print('checked')
