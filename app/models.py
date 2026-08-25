@@ -10,7 +10,7 @@ class Budget(models.Model):
     name = models.CharField(max_length=100)
     amount = models.IntegerField()
     remaining_money = models.IntegerField()
-    month_year = models.DateField(unique=True)
+    month_year = models.DateField()
 
 class Transactions(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -30,5 +30,5 @@ class Transactions(models.Model):
         ('yearly', 'yearly')
     ]
     frequency = models.CharField(choices=FREQUENCY_CHOICES, max_length=50, blank=True)
-    next_occurence = models.DateField(blank=True)
+    next_occurence = models.DateField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

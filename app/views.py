@@ -7,6 +7,9 @@ from accounts.models import User
 from django_celery_beat.models import PeriodicTask, IntervalSchedule
 from django.db import transaction
 from rest_framework.permissions import IsAuthenticated
+from django.utils import timezone
+from datetime import timedelta, datetime
+from dateutil.relativedelta import relativedelta
 
 class CreateCategory(APIView):
     permission_classes = [IsAuthenticated]
@@ -28,91 +31,94 @@ class CreateBudget(APIView):
         amount = request.data.get('amount')
         month_year = request.data.get('month_year')
 
-        owner = User.objects.get(id=request.user)
+        owner = User.objects.get(id=request.user.id)
         
-        budget = Budget.objects.get(owner = owner) 
-        if budget:
+        try:
+
+            Budget.objects.get(owner = owner, month_year=month_year)
             return Response({
-                'message': 'A budget for this user already exists'
+                'message': 'A budget for this month already exists'
             }, status = status.HTTP_409_CONFLICT)
 
-        Budget.objects.create(
-            owner = owner,
-            name = name,
-            mount = amount,
-            month_year = month_year 
-        )
+        except Budget.DoesNotExist:
 
-        def sheduletask():
-                interval, _ = IntervalSchedule.objects.get_or_create(
-                    every=1,
-                    period=IntervalSchedule.MINUTES
-                )
+            Budget.objects.create(
+                owner = owner,
+                name = name,
+                amount = amount,
+                month_year = month_year,
+                remaining_money=amount 
+            )
 
-                PeriodicTask.objects.create(
-                    interval = interval,
-                    name = "delete_budget",
-                    task= f"app.tasks.delete_budget"
-                )
-
-        return Response({
-            'message': 'Budget created successfully'
-        }, status = status.HTTP_201_CREATED)    
+            return Response({
+                'message': 'Budget created successfully'
+            }, status = status.HTTP_201_CREATED)    
 
 # when a user sends in  transaction and its recurring, celery dedducts the money automtically every month]\
 class CreateTransactions(APIView):
     permission_classes = [IsAuthenticated]
+
     def post(self, request):
-        type = request.dat.get('type')
+        t = request.data.get('type')
         amount = request.data.get('amount')
-        category = request.data.get('category')
+        category_id = request.data.get('category')
         description = request.data.get('description')
-        transaction_date = request.data.get('trnsaction_date')
-        budget = request.data.get('budget')
+        transaction_date = request.data.get('transaction_date')
         frequency = request.data.get('frequency')
-        next_occurence = request.data.get('next_occurence')
+        now = timezone.localdate()
 
-        owner = User.objects.get(request.user)
-        with transaction.atomic():
-            transaction = Transactions.objects.create(
-                owner = owner,
-                type = type,
-                amount = amount,
-                category = category,
-                description = description,
-                transaction_date = transaction_date,
-                budget = budget,
-                frequency = frequency,
-                next_occurence = next_occurence
-            )
+        budget = Budget.objects.get(month_year=now)
+        owner = User.objects.get(id = request.user.id)
+        category = Category.objects.get(id=category_id) 
+        # with transaction.atomic()
+        # i removed the transaction because it conflicts with the transaction below and 
+        # im too lazy to change all the names
+        transaction = Transactions.objects.create(
+            owner = owner,
+            type = t,
+            amount = amount,
+            category = category,
+            description = description,
+            transaction_date = transaction_date,
+            budget = budget,
+            frequency = frequency
+        )
+        print(transaction)
 
-            if transaction.type == 'expenses':
-                budget = transaction.budget.amount
-                remaining_money =  budget - amount
-                budget.remaining_money = remaining_money
-                budget.save()
-            
-            if transaction.type == 'income':
-                budget = transaction.budget.amount
-                budget.remaining_money += transaction.amount
-                budget.save()
 
-        # if theres a frequency, use celery to deduct automatically every (week, month or year)
-        # i'll use redis beat
-        # if type of transaction is income dont forget to add
-        # add acid transactions
-        # if frequency:
-        # also delete budget after the month_year has passsed
+        if transaction.type == 'expenses':
+            budget = transaction.budget
+            budget.remaining_money -= transaction.amount
+            budget.save()
+
+        elif transaction.type == 'income':
+            budget = transaction.budget
+            budget.remaining_money += transaction.amount
+            budget.save()
+
+    # if theres a frequency, use celery to deduct automatically every (week, month or year)
+    # i'll use redis beat
+    # if type of transaction is income dont forget to add
+    # add acid transactions
+    # if frequency:
+    # also delete budget after the month_year has passsed
 
         if frequency:
 
             frequency_int = 0
             if frequency == 'weekly':
                 frequency_int = 7
+                transaction.next_occurence = now + timedelta(weeks=1)
+                transaction.save()
             elif frequency == 'monthly':
                 frequency_int = 30
-            elif frequency == yearly:
+                transaction.next_occurence = now + relativedelta(months=1)
+                transaction.save()
+            elif frequency == 'yearly':
                 frequency_int = 365
+                transaction.next_occurence = now + relativedelta(years=1)
+                transaction.save()
+
 
             def sheduletask():
                 interval, _ = IntervalSchedule.objects.get_or_create(
@@ -120,14 +126,18 @@ class CreateTransactions(APIView):
                     period=IntervalSchedule.SECONDS
                 )
 
-                PeriodicTask.objects.create(
+                PeriodicTask.objects.get_or_create(
                     interval = interval,
                     name = "check_recurring_transactions",
                     task= f"app.tasks.{frequency}_task"
                 )
 
-                # if the month is in the current year and when its subtracted from the created_at month its == 30 then we delete 
-                # if its not in the current year well check every 30 days if timezone.now() year is equall to the year, if it is well run the above condition
+            # if the month is in the current year and when its subtracted from the created_at month its == 30 then we delete 
+            # if its not in the current year well check every 30 days if timezone.now() year is equall to the year, if it is well run the above condition
+
+            return Response({
+                "message": "Transaction added"
+            }, status=status.HTTP_201_CREATED)
 
 class DeleteCategory(APIView):
     def delete(self, request, id):

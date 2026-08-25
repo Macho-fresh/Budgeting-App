@@ -39,14 +39,38 @@ def yearly_task():
         remaining_money.save()
         print('money deducted!')
 
+# @shared_task
+# def delete_budget():
+#     now = timezone.localdate()
+#     budgets = Budget.objects.all()
+#     for budget in budgets:
+#         budget_timespan = budget.month_year
+#         days_difference = (now - budget_timespan).days
+
+#         if now.year == budget_timespan.year and days_difference >= 30:
+#             budget.delete()
+
+#     print('checked')
+
+# i removed this because i want the old budgets and its 
+# transactions to remian so users can see history of expense then i enforced a 
+# rule that only on buget per month
+
+
 @shared_task
-def delete_budget():
-    now = timezone.now()
-    budget = Budget.objects.all()
-    budget_timespan = budget.month_year
-    days_difference = (now - budget_timespan).days
+def next_occurence():
+    transactions = Transactions.objects.all()
+    now = timezone.localdate()
+    for transaction in transactions:
+        frequency = 0
+        if transaction.frequency == 'weekly':
+            if now >= transaction.next_occurence:
+                transaction.next_occurence = now + timedelta(weeks=1)
+        elif transaction.frequency == 'monthly':
+            if now >= transaction.next_occurence:
+                transaction.next_occurence = now + relativedelta(months=1) 
+        elif transaction.frequency == 'yearly':
+            if now >= transaction.next_occurence:
+                transaction.next_occurence = now + relativedelta(years=1) 
 
-    if now == budget_timespan and days_difference == 30:
-        Budget.delete()
-
-    print('checked')
+    print('checking...')
