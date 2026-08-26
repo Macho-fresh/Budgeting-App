@@ -6,38 +6,79 @@ from datetime import timedelta
 
 @shared_task
 def weekly_task():
+    today = timezone.localdate()
     with transaction.atomic():
-        weekly_deduct = Transactions.objects.filter(frequency=7)
-        amount = weekly_deduct.amount
-        budget = Budget.amount
-        remaining_money = Budget.remaining_money
-        remaining_money = budget - amount
-        remaining_money.save()
-        print('money deducted!')
+        weekly_deduct = Transactions.objects.filter(frequency='weekly',next_occurence__lte=today)
+        for recurring_deduct in weekly_deduct:
+            amount = recurring_deduct.amount
+            budget = recurring_deduct.budget
+            budget.remaining_money -= amount
+            budget.save()
+            # create a transaction
+
+            Transactions.objects.create(
+            owner = recurring_deduct.owner,
+            type = recurring_deduct.type,
+            amount = recurring_deduct.amount,
+            category = recurring_deduct.category,
+            description = recurring_deduct.description,
+            transaction_date = timezone.localdate(),
+            budget = recurring_deduct.budget,
+            frequency = ''
+        )
+            print('money deducted!')
 
 
 @shared_task
 def monthly_task():
+    today = timezone.localdate()
     with transaction.atomic():
-        monthly_deduct = Transactions.objects.filter(frequency=30)
-        amount = monthly_deduct.amount
-        budget = Budget.amount
-        remaining_money = Budget.remaining_money
-        remaining_money = budget - amount
-        remaining_money.save()
-        print('money deducted!')
+        monthly_deduct = Transactions.objects.filter(frequency='monthly',next_occurence__lte=today)
+        for recurring_deduct in monthly_deduct:
+            amount = recurring_deduct.amount
+            budget = recurring_deduct.budget
+            budget.remaining_money -= amount
+            budget.save()
+            # create a transaction
+
+            Transactions.objects.create(
+            owner = recurring_deduct.owner,
+            type = recurring_deduct.type,
+            amount = recurring_deduct.amount,
+            category = recurring_deduct.category,
+            description = recurring_deduct.description,
+            transaction_date = timezone.localdate(),
+            budget = recurring_deduct.budget,
+            frequency = ''
+        )
+            print('money deducted!')
+
 
 
 @shared_task
 def yearly_task():
+    today = timezone.localdate()
     with transaction.atomic():
-        annually_deduct = Transactions.objects.filter(frequency=365)
-        amount = annually_deduct.amount
-        budget = Budget.amount
-        remaining_money = Budget.remaining_money
-        remaining_money = budget - amount
-        remaining_money.save()
-        print('money deducted!')
+        yearly_deduct = Transactions.objects.filter(frequency='yearly',next_occurence__lte=today)
+        for recurring_deduct in yearly_deduct:
+            amount = recurring_deduct.amount
+            budget = recurring_deduct.budget
+            budget.remaining_money -= amount
+            budget.save()
+            # create a transaction
+
+            Transactions.objects.create(
+            owner = recurring_deduct.owner,
+            type = recurring_deduct.type,
+            amount = recurring_deduct.amount,
+            category = recurring_deduct.category,
+            description = recurring_deduct.description,
+            transaction_date = timezone.localdate(),
+            budget = recurring_deduct.budget,
+            frequency = ''
+        )
+            print('money deducted!')
+
 
 # @shared_task
 # def delete_budget():
@@ -65,12 +106,15 @@ def next_occurence():
         frequency = 0
         if transaction.frequency == 'weekly':
             if now >= transaction.next_occurence:
-                transaction.next_occurence = now + timedelta(weeks=1)
+                transaction.next_occurence += timedelta(weeks=1)
+                transaction.save()
         elif transaction.frequency == 'monthly':
             if now >= transaction.next_occurence:
-                transaction.next_occurence = now + relativedelta(months=1) 
+                transaction.next_occurence += relativedelta(months=1)
+                transaction.save()
         elif transaction.frequency == 'yearly':
             if now >= transaction.next_occurence:
-                transaction.next_occurence = now + relativedelta(years=1) 
+                transaction.next_occurence += relativedelta(years=1) 
+                transaction.save()
 
     print('checking...')

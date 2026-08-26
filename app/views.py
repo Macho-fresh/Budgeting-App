@@ -66,8 +66,9 @@ class CreateTransactions(APIView):
         transaction_date = request.data.get('transaction_date')
         frequency = request.data.get('frequency')
         now = timezone.localdate()
+        owner = User.objects.get(id=request.user.id)
 
-        budget = Budget.objects.get(month_year=now)
+        budget = Budget.objects.get(owner = owner, month_year__year=now.year, month_year__month=now.month)
         owner = User.objects.get(id = request.user.id)
         category = Category.objects.get(id=category_id) 
         # with transaction.atomic()
@@ -83,7 +84,6 @@ class CreateTransactions(APIView):
             budget = budget,
             frequency = frequency
         )
-        print(transaction)
 
 
         if transaction.type == 'expenses':
@@ -131,6 +131,8 @@ class CreateTransactions(APIView):
                     name = "check_recurring_transactions",
                     task= f"app.tasks.{frequency}_task"
                 )
+
+            sheduletask()
 
             # if the month is in the current year and when its subtracted from the created_at month its == 30 then we delete 
             # if its not in the current year well check every 30 days if timezone.now() year is equall to the year, if it is well run the above condition
