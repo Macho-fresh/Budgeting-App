@@ -1,0 +1,22 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+
+  redis:
+    image: redis:alpine
+
+  celery:
+    build: .
+    command: celery -A project worker -l INFO
+    depends_on: 
+      - redis  
+  
+  celery-beat:
+    build: .
+    command: celery -A project beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    depends_on: 
+      - redis
