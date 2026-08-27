@@ -12,11 +12,15 @@ services:
   celery:
     build: .
     command: celery -A project worker -l INFO
+    env_file:
+      - .env
     depends_on: 
       - redis  
   
   celery-beat:
     build: .
     command: celery -A project beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    env_file:
+      - .env
     depends_on: 
       - redis
