@@ -4,5 +4,6 @@ from .views import *
 urlpatterns = [
     path('create-category/', CreateCategory.as_view()),
     path('create-budget/', CreateBudget.as_view()),
-    path('create-transactions/', CreateTransactions.as_view()) 
+    path('create-transactions/', CreateTransactions.as_view()),
+    path('delete-category/<int:id>', DeleteCategory.as_view()) 
 ]
